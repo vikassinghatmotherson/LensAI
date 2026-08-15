@@ -1,29 +1,38 @@
-import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState, type FormEvent } from 'react'
+import { useAuth } from 'react-oidc-context'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '../components/common/Button'
-import { authService } from '../services/authService'
 
 export function Login() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const { isAuthenticated, isLoading, signinRedirect } = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
-  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      const nextPath = typeof location.state === 'object' && location.state && 'from' in location.state
+        ? String((location.state as { from?: string }).from || '/dashboard')
+        : '/dashboard'
+
+      navigate(nextPath, { replace: true })
+    }
+  }, [isAuthenticated, isLoading, location.state, navigate])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setError('')
-
-    if (!email.trim() || !password.trim()) {
-      setError('Please enter both email and password.')
-      return
-    }
-
     setIsSubmitting(true)
 
     try {
-      await authService.login(email, password)
-      navigate('/dashboard', { replace: true })
+      await signinRedirect({
+        state: {
+          from: typeof location.state === 'object' && location.state && 'from' in location.state
+            ? String((location.state as { from?: string }).from || '/dashboard')
+            : '/dashboard',
+        },
+      })
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Login failed.')
     } finally {
@@ -38,46 +47,13 @@ export function Login() {
         <p className="login-tagline">Understand every image.</p>
 
         <form className="login-card" onSubmit={handleSubmit} noValidate>
-          <div className="field-group">
-            <label htmlFor="email">Email</label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="name@example.com"
-            />
-          </div>
-
-          <div className="field-group">
-            <label htmlFor="password">Password</label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="Enter your password"
-            />
-          </div>
+          <p className="login-description">Sign in with your Cognito account to continue.</p>
 
           {error ? <p className="form-error">{error}</p> : null}
 
-          <Button type="submit" fullWidth disabled={isSubmitting}>
-            {isSubmitting ? 'Signing In...' : 'Sign In'}
+          <Button type="submit" fullWidth disabled={isSubmitting || isLoading}>
+            {isSubmitting ? 'Redirecting...' : 'Sign In with Cognito'}
           </Button>
-
-          <div className="login-links">
-            <a href="#" onClick={(event) => event.preventDefault()}>
-              Forgot password?
-            </a>
-            <p>
-              Don&apos;t have an account? <a href="#" onClick={(event) => event.preventDefault()}>Sign up</a>
-            </p>
-          </div>
         </form>
       </div>
     </div>
