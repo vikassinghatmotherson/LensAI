@@ -8,10 +8,40 @@ import { Settings } from './pages/Settings'
 import { ProtectedRoute } from './routes/ProtectedRoute'
 
 function App() {
-  const { isAuthenticated, isLoading } = useAuth()
+  const { isAuthenticated, isLoading, error, removeUser, signinRedirect, user } = useAuth()
+
+  const handleSignOut = () => {
+    const cognitoDomain = 'https://ap-south-1ffahulca8.auth.ap-south-1.amazoncognito.com'
+    const clientId = '20oenqg86re4v0i6eib2kg22su'
+    const logoutUri = 'https://lens-ai-six.vercel.app/'
+
+    removeUser()
+    window.location.href = `${cognitoDomain}/logout?client_id=${clientId}&logout_uri=${encodeURIComponent(logoutUri)}`
+  }
 
   if (isLoading) {
     return <div className="page-loading">Loading...</div>
+  }
+
+  if (error) {
+    return <div className="page-loading">Encountering error... {error.message}</div>
+  }
+
+  if (isAuthenticated) {
+    return (
+      <div>
+        <pre>Hello: {user?.profile?.email}</pre>
+        <pre>ID Token: {user?.id_token}</pre>
+        <pre>Access Token: {user?.access_token}</pre>
+        <pre>Refresh Token: {user?.refresh_token}</pre>
+        <button type="button" onClick={() => signinRedirect()}>
+          Sign in
+        </button>
+        <button type="button" onClick={handleSignOut}>
+          Sign out
+        </button>
+      </div>
+    )
   }
 
   return (
