@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { useAuth } from 'react-oidc-context'
 import { Login } from './pages/Login'
 import { Dashboard } from './pages/Dashboard'
 import { Images } from './pages/Images'
@@ -7,9 +8,18 @@ import { Settings } from './pages/Settings'
 import { ProtectedRoute } from './routes/ProtectedRoute'
 
 function App() {
+  const { isAuthenticated, isLoading } = useAuth()
+
+  if (isLoading) {
+    return <div className="page-loading">Loading...</div>
+  }
+
   return (
     <Routes>
-      <Route path="/login" element={<Login />} />
+      <Route
+        path="/login"
+        element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />}
+      />
       <Route
         path="/dashboard"
         element={
@@ -42,8 +52,14 @@ function App() {
           </ProtectedRoute>
         }
       />
-      <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      <Route
+        path="/"
+        element={<Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />}
+      />
+      <Route
+        path="*"
+        element={<Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />}
+      />
     </Routes>
   )
 }
