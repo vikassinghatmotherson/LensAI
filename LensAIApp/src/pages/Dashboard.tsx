@@ -1,10 +1,12 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
+import { useAuth } from 'react-oidc-context'
 import { AppLayout } from '../components/layout/AppLayout'
 import { StatCard } from '../components/dashboard/StatCard'
 import { UploadImage } from '../components/dashboard/UploadImage'
 import { RecentAnalysisCard } from '../components/dashboard/RecentAnalysisCard'
 import { AnalysisResult } from '../components/dashboard/AnalysisResult'
 import type { AnalysisResult as AnalysisResultType, ImageAsset } from '../types'
+import { useState } from 'react'
 
 const initialAnalyses: ImageAsset[] = [
   {
@@ -36,7 +38,11 @@ const initialAnalyses: ImageAsset[] = [
 ]
 
 export function Dashboard() {
+  const { user } = useAuth()
   const [analysisResult, setAnalysisResult] = useState<AnalysisResultType | null>(null)
+  
+  const userName = user?.profile?.name || user?.profile?.given_name || user?.profile?.email || 'User'
+  
   const stats = useMemo(
     () => [
       { label: 'Images Analyzed', value: '24' },
@@ -51,7 +57,7 @@ export function Dashboard() {
       <div className="dashboard-page">
         <div className="page-header">
           <div>
-            <p className="eyebrow">Good morning, User</p>
+            <p className="eyebrow">Good morning, {userName}</p>
             <h1>Analyze an image and discover what&apos;s inside it.</h1>
           </div>
         </div>

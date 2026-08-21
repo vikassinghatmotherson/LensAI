@@ -1,13 +1,26 @@
 import { useAuth } from 'react-oidc-context'
 import { useNavigate } from 'react-router-dom'
+import { authService } from '../../services/authService'
 
 export function Header() {
   const navigate = useNavigate()
-  const { user, signoutRedirect } = useAuth()
+  const { user, removeUser } = useAuth()
 
   const handleSignOut = async () => {
-    await signoutRedirect()
-    navigate('/login', { replace: true })
+    try {
+      // Clear stored tokens
+      authService.clearTokens()
+
+      // Remove OIDC user from session storage
+      removeUser()
+
+      console.log('✓ User signed out successfully')
+    } catch (error) {
+      console.error('Sign out error:', error)
+    } finally {
+      // Always redirect to login
+      navigate('/login', { replace: true })
+    }
   }
 
   return (

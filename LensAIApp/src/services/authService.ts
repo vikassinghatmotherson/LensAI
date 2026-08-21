@@ -57,4 +57,28 @@ export const authService = {
     const oidcUser = await userManager.signinCallback()
     return mapOidcUser(oidcUser)
   },
+
+  // Token management
+  getAccessToken(): string | null {
+    return localStorage.getItem('access_token')
+  },
+
+  getIdToken(): string | null {
+    return localStorage.getItem('id_token')
+  },
+
+  getRefreshToken(): string | null {
+    return localStorage.getItem('refresh_token')
+  },
+
+  clearTokens(): void {
+    localStorage.removeItem('access_token')
+    localStorage.removeItem('id_token')
+    localStorage.removeItem('refresh_token')
+    console.log('✓ Tokens cleared')
+  },
+
+  hasValidToken(): boolean {
+    return Boolean(this.getAccessToken())
+  },
 }

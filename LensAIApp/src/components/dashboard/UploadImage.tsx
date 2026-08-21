@@ -1,6 +1,7 @@
 import { useRef, useState, type ChangeEvent, type DragEvent } from 'react'
 import { Button } from '../common/Button'
 import type { ImageAsset, AnalysisResult } from '../../types'
+import { imageUploadService } from '../../services/imageUploadService'
 
 interface UploadImageProps {
   onAnalyze: (result: AnalysisResult) => void
@@ -20,6 +21,8 @@ export function UploadImage({ onAnalyze }: UploadImageProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [error, setError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
 
   const handleFileSelection = (file: File | null) => {
@@ -43,33 +46,62 @@ export function UploadImage({ onAnalyze }: UploadImageProps) {
     handleFileSelection(file)
   }
 
-  const handleAnalyze = () => {
+  const handleAnalyze = async () => {
     if (!selectedFile) {
       return
     }
 
     setIsProcessing(true)
+    setError(null)
+    setUploadProgress(0)
 
-    const timeout = window.setTimeout(() => {
+    try {
+      // Upload image to S3
+      const uploadResult = await imageUploadService.uploadImage(selectedFile, (progress) => {
+        setUploadProgress(Math.round(progress))
+      })
+
+      if (!uploadResult.success) {
+        setError(uploadResult.error || 'Upload failed')
+        setIsProcessing(false)
+        return
+      }
+
+      // After successful upload, call the analysis with mock data
+      // In a real app, you would send the imageId to your backend for analysis
       const asset: ImageAsset = {
-        id: `img-${Date.now()}`,
+        id: uploadResult.imageId,
         name: selectedFile.name,
         type: 'Document',
         size: selectedFile.size,
         uploadedAt: new Date().toISOString(),
-        status: 'Processed',
-        confidence: mockAnalysis.confidence,
+        status: 'Processing',
+        confidence: 0,
       }
 
-      setIsProcessing(false)
-      onAnalyze({
-        ...mockAnalysis,
-        imageType: selectedFile.name.includes('receipt') ? 'Restaurant Receipt' : 'Document',
+      console.info('Image uploaded successfully', {
+        imageId: uploadResult.imageId,
+        objectKey: uploadResult.objectKey,
+        asset,
       })
-      console.info('Mock analysis complete', asset)
-    }, 1200)
 
-    return () => window.clearTimeout(timeout)
+      // Simulate backend analysis processing
+      const analysisTimeout = window.setTimeout(() => {
+        setIsProcessing(false)
+        setUploadProgress(0)
+        onAnalyze({
+          ...mockAnalysis,
+          imageType: selectedFile.name.includes('receipt') ? 'Restaurant Receipt' : 'Document',
+        })
+      }, 2000)
+
+      return () => window.clearTimeout(analysisTimeout)
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred during upload'
+      setError(errorMessage)
+      setIsProcessing(false)
+      setUploadProgress(0)
+    }
   }
 
   const removeFile = () => {
@@ -131,8 +163,40 @@ export function UploadImage({ onAnalyze }: UploadImageProps) {
 
       {selectedFile && (
         <div className="upload-actions">
+          {error && (
+            <div className="error-message" style={{ color: '#ef4444', marginBottom: '12px' }}>
+              {error}
+            </div>
+          )}
+          {uploadProgress > 0 && uploadProgress < 100 && (
+            <div className="upload-progress" style={{ marginBottom: '12px' }}>
+              <div
+                style={{
+                  width: '100%',
+                  height: '4px',
+                  backgroundColor: '#e5e7eb',
+                  borderRadius: '2px',
+                  overflow: 'hidden',
+                }}
+              >
+                <div
+                  style={{
+                    width: `${uploadProgress}%`,
+                    height: '100%',
+                    backgroundColor: '#3b82f6',
+                    transition: 'width 0.3s ease',
+                  }}
+                />
+              </div>
+              <small style={{ color: '#6b7280' }}>{uploadProgress}% uploaded</small>
+            </div>
+          )}
           <Button onClick={handleAnalyze} disabled={isProcessing}>
-            {isProcessing ? 'Processing...' : 'Analyze Image'}
+            {isProcessing
+              ? uploadProgress > 0 && uploadProgress < 100
+                ? 'Uploading...'
+                : 'Processing...'
+              : 'Analyze Image'}
           </Button>
         </div>
       )}

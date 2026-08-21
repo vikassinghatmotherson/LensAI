@@ -35,20 +35,6 @@ export function Sidebar() {
           )
         })}
       </nav>
-
-      <div className="sidebar-footer">
-        <div className="profile-block">
-          <div className="profile-avatar">U</div>
-          <div>
-            <strong>User</strong>
-            <small>Profile</small>
-          </div>
-        </div>
-
-        <Link to="/login" className="signout-link">
-          Sign out
-        </Link>
-      </div>
     </aside>
   )
 }
